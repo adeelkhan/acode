@@ -1,0 +1,102 @@
+Screen {
+    layout: vertical;
+}
+
+#logo {
+    content-align: center middle;
+    color: $accent;
+    padding: 1 2;
+    height: auto;
+}
+
+#output-scroll {
+    height: 1fr;
+    padding: 0 1;
+}
+
+#input-container {
+    height: auto;
+    padding: 0 1;
+}
+
+#user-input {
+    border: round $success;
+}
+
+/* ── cards ─────────────────────────────────────────────── */
+
+.welcome-card {
+    margin: 0 1 1 1;
+    padding: 0 1;
+    color: $text-muted;
+}
+
+.user-card {
+    border: round $success;
+    margin: 1 1 0 1;
+    padding: 0 1;
+    color: $success;
+}
+
+.thinking-card {
+    margin: 0 2;
+    padding: 0 1;
+    color: $text-muted;
+}
+
+.tool-card {
+    border: round $warning;
+    margin: 0 4;
+    padding: 0 1;
+    color: $warning;
+}
+
+.tool-result-card {
+    border: round $surface-lighten-2;
+    margin: 0 4;
+    padding: 0 1;
+    color: $text-muted;
+}
+
+.agent-card {
+    border: round $accent;
+    margin: 0 1 1 1;
+    padding: 0 1;
+    height: auto;
+}
+
+.agent-card:focus {
+    border: round $accent-lighten-2;
+}
+
+.copy-btn-row {
+    align: right middle;
+    height: auto;
+    background: transparent;
+}
+
+.copy-btn {
+    width: 5;
+    height: 3;
+    content-align: center middle;
+    color: $text-muted;
+    background: transparent;
+    text-style: bold;
+}
+
+.copy-btn:hover {
+    color: $accent;
+    background: $surface-lighten-1;
+    border: round $accent;
+}
+
+.agent-card Markdown {
+    height: auto;
+}
+
+.error-card {
+    border: round $error;
+    margin: 0 1 1 1;
+    padding: 0 1;
+    color: $error;
+}

@@ -1,0 +1,122 @@
+import json
+from typing import Callable
+import ollama
+from tools import TOOL_DEFINITIONS, TOOL_DISPATCH
+
+SYSTEM_PROMPT = """You are a helpful AI assistant with access to tools.
+Use tools when needed to answer the user's questions accurately.
+Think step by step. After gathering information via tools, provide a clear final answer.
+
+Available tools:
+- web_fetch: Fetch content from a URL
+- web_search: Search the web via DuckDuckGo
+- shell_exec: Run shell commands on the user's machine
+"""
+
+
+class ReactAgent:
+    def __init__(self, model: str = "minimax-m2.5:cloud"):
+        self.model = model
+        self.history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    def run(self, user_input: str, on_event: Callable[[str, str], None]) -> str:
+        """
+        Run the ReAct loop for one user turn.
+        on_event(kind, text) is called for each event:
+          kind = "llm"  -> LLM text chunk
+          kind = "tool_call" -> tool being invoked
+          kind = "tool_result" -> tool output
+          kind = "error" -> error message
+        Returns the final assistant response text.
+        """
+        self.history.append({"role": "user", "content": user_input})
+
+        max_iterations = 10
+        final_response = ""
+
+        for _ in range(max_iterations):
+            on_event("thinking", "Thinking...")
+            response = ollama.chat(
+                model=self.model,
+                messages=self.history,
+                tools=TOOL_DEFINITIONS,
+            )
+
+            message = response.message
+            tool_calls = message.tool_calls or self._parse_content_as_tool_calls(message.content)
+
+            if not tool_calls:
+                # Final answer from LLM
+                final_response = message.content or ""
+                on_event("llm", final_response)
+                self.history.append({"role": "assistant", "content": final_response})
+                break
+
+            # Add assistant message with tool calls to history
+            self.history.append(self._llm_response_to_dict(message))
+
+            # Execute each tool call
+            for tc in tool_calls:
+                name = tc.function.name
+                args = tc.function.arguments or {}
+
+                on_event("tool_call", f"Calling tool: {name}({json.dumps(args)})")
+
+                dispatch = TOOL_DISPATCH.get(name)
+                if dispatch:
+                    try:
+                        result = dispatch(args)
+                    except Exception as e:
+                        result = f"Tool error: {e}"
+                else:
+                    result = f"Unknown tool: {name}"
+
+                on_event("tool_result", f"[{name}] → {result[:500]}{'...' if len(result) > 500 else ''}")
+
+                self.history.append({
+                    "role": "tool",
+                    "content": result,
+                })
+
+        return final_response
+
+    @staticmethod
+    def _parse_content_as_tool_calls(content: str | None) -> list | None:
+        """Fallback for models that return tool calls as JSON text in content."""
+        if not content:
+            return None
+        try:
+            data = json.loads(content.strip())
+            if isinstance(data, dict) and "name" in data and "arguments" in data:
+                # Wrap in a minimal object that matches the tool_calls interface
+                class _Fn:
+                    def __init__(self, name, arguments):
+                        self.name = name
+                        self.arguments = arguments
+
+                class _TC:
+                    def __init__(self, name, arguments):
+                        self.function = _Fn(name, arguments)
+
+                return [_TC(data["name"], data["arguments"])]
+        except (json.JSONDecodeError, KeyError):
+            pass
+        return None
+
+    @staticmethod
+    def _llm_response_to_dict(message) -> dict:
+        d: dict = {"role": "assistant", "content": message.content or ""}
+        if message.tool_calls:
+            d["tool_calls"] = [
+                {
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    }
+                }
+                for tc in message.tool_calls
+            ]
+        return d
+
+    def reset(self):
+        self.history = [{"role": "system", "content": SYSTEM_PROMPT}]
