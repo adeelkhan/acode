@@ -1,6 +1,34 @@
+import os
+import re
 import subprocess
 import requests
 from duckduckgo_search import DDGS
+
+_CWD = os.getcwd()
+
+# (pattern, human-readable reason)
+_BLOCKED: list[tuple[str, str]] = [
+    (r"\brm\s+.*-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r", "destructive rm -rf"),
+    (r"\brmdir\b",                                   "rmdir"),
+    (r"\bmkfs\b",                                    "mkfs"),
+    (r"\bdd\b.*\bof=",                               "dd write"),
+    (r"\b(shutdown|reboot|poweroff|halt|init\s+0)\b","system shutdown/reboot"),
+    (r"\b(fdisk|parted|diskutil\s+erase)\b",         "disk partitioning"),
+    (r"\bsudo\b",                                    "sudo escalation"),
+    (r"\bsu\s",                                      "su escalation"),
+    (r"(~|/Users/\w+|/home/\w+)/\.ssh",             "SSH directory"),
+    (r"(~|/Users/\w+|/home/\w+)/\.aws",             "AWS credentials"),
+    (r"/etc/(passwd|shadow|sudoers)",                "sensitive system file"),
+    (r"cd\s+(/(?!" + re.escape(_CWD.lstrip("/")) + r")|\.\.)", "cd outside project"),
+]
+
+
+def _validate_command(command: str) -> str | None:
+    """Return an error string if the command is blocked, else None."""
+    for pattern, reason in _BLOCKED:
+        if re.search(pattern, command, re.IGNORECASE):
+            return f"Blocked: {reason}. Shell commands are restricted to {_CWD}."
+    return None
 
 
 TOOL_DEFINITIONS = [
@@ -122,6 +150,9 @@ def get_weather(location: str) -> str:
 
 
 def shell_exec(command: str) -> str:
+    error = _validate_command(command)
+    if error:
+        return error
     try:
         result = subprocess.run(
             command,
@@ -129,6 +160,7 @@ def shell_exec(command: str) -> str:
             capture_output=True,
             text=True,
             timeout=30,
+            cwd=_CWD,
         )
         output = result.stdout + result.stderr
         return output[:4000] if output else "(no output)"
