@@ -1,6 +1,8 @@
 import subprocess
+import ollama
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Input, Static, Markdown
+from textual.screen import ModalScreen
+from textual.widgets import Footer, Input, Static, Markdown, Button
 from textual.containers import VerticalScroll, Vertical, Container, Horizontal
 from textual import work
 from agent import ReactAgent
@@ -8,6 +10,44 @@ from agent import ReactAgent
 
 def copy_to_clipboard(text: str) -> None:
     subprocess.run("pbcopy", input=text.encode(), check=True)
+
+
+def check_ollama(model: str) -> tuple[bool, str, str]:
+    """Returns (ok, title, error_message). Checks server reachability and model availability."""
+    try:
+        available = [m.model for m in ollama.list().models]
+    except Exception:
+        return False, "Backend Server Missing", (
+            "Could not connect to the Ollama server.\n\n"
+            "Make sure Ollama is installed and running:\n"
+            "    ollama serve"
+        )
+    if not any(m == model or m.startswith(model.split(":")[0]) for m in available):
+        return False, "Model Not Available", (
+            f"Model '{model}' is not pulled on this machine.\n\n"
+            f"Pull it first with:\n"
+            f"    ollama pull {model}"
+        )
+    return True, "", ""
+
+
+class OllamaErrorModal(ModalScreen):
+    def __init__(self, title: str, message: str) -> None:
+        super().__init__()
+        self._title = title
+        self._message = message
+
+    def compose(self) -> ComposeResult:
+        with Container(id="error-dialog"):
+            yield Static(self._message, id="error-msg")
+            with Horizontal(id="ok-row"):
+                yield Button("OK", id="ok-btn", variant="warning")
+
+    def on_mount(self) -> None:
+        self.query_one("#error-dialog").border_title = self._title
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.app.exit()
 
 
 class ThinkingIndicator(Static):
@@ -88,6 +128,10 @@ class AcodeApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        ok, title, error = check_ollama(self.agent.model)
+        if not ok:
+            self.push_screen(OllamaErrorModal(title, error))
+            return
         self._add_card(
             "[bold cyan]Welcome![/bold cyan] Type a message to start. "
             "Click any agent response and press [bold]c[/bold] to copy it.",

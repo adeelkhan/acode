@@ -25,6 +25,39 @@ Screen {
 
 /* ── cards ─────────────────────────────────────────────── */
 
+/* ── error modal ────────────────────────────────────────── */
+
+OllamaErrorModal {
+    align: center middle;
+}
+
+#error-dialog {
+    border: round rgb(255,140,0);
+    border-title-color: rgb(255,140,0);
+    border-title-align: center;
+    background: $surface;
+    width: 56;
+    height: auto;
+    padding: 1 2;
+}
+
+#error-msg {
+    color: $text;
+    margin-bottom: 1;
+}
+
+#ok-row {
+    align: center middle;
+    height: auto;
+    margin-top: 1;
+}
+
+#ok-btn {
+    width: 16;
+}
+
+/* ── cards ─────────────────────────────────────────────── */
+
 .welcome-card {
     margin: 0 1 1 1;
     padding: 0 1;
