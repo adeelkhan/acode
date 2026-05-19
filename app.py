@@ -1,7 +1,7 @@
 from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Input, Static
-from textual.containers import VerticalScroll, Vertical
+from textual.containers import VerticalScroll, Vertical, Horizontal
 from textual import work
 
 from agent import ReactAgent
@@ -30,8 +30,9 @@ class AcodeApp(App):
         self._busy = False
 
     def compose(self) -> ComposeResult:
-        yield Static(LOGO, id="logo")
-        yield ModelInfoBar(self.agent.model)
+        with Horizontal(id="header"):
+            yield Static(LOGO, id="logo")
+            yield ModelInfoBar(self.agent.model)
         yield VerticalScroll(id="output-scroll")
         with Vertical(id="input-container"):
             yield CommandHints(id="cmd-hints", markup=True)

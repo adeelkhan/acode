@@ -23,28 +23,38 @@ class CommandHints(Static):
         self.display = False
 
 
-class ModelInfoBar(Static):
+class ModelInfoBar(Horizontal):
     def __init__(self, model: str) -> None:
-        super().__init__(self._make_content(model), id="model-info-bar", markup=True)
+        super().__init__(id="model-info-bar")
         self.border_title = model
+        self._left, self._right = self._make_columns(model)
+
+    def compose(self):
+        yield Static(self._left, classes="info-col", markup=True)
+        yield Static(self._right, classes="info-col", markup=True)
 
     def set_model(self, model: str) -> None:
-        self.update(self._make_content(model))
         self.border_title = model
+        self._left, self._right = self._make_columns(model)
+        for col, text in zip(self.query(Static), (self._left, self._right)):
+            col.update(text)
 
     @staticmethod
-    def _make_content(model: str) -> str:
+    def _make_columns(model: str) -> tuple[str, str]:
         info = get_model_info(model)
         k = "bold orange1"
         caps = "  ·  ".join(info["capabilities"]) if info["capabilities"] else "N/A"
-        return (
-            f"[{k}]Arch:[/{k}] {info['arch']}    "
-            f"[{k}]Params:[/{k}] {info['params']}    "
-            f"[{k}]Context:[/{k}] {info['context']}    "
-            f"[{k}]Embed:[/{k}] {info['embedding']}    "
-            f"[{k}]Quant:[/{k}] {info['quant']}\n"
-            f"[{k}]Capabilities:[/{k}] {caps}"
+        left = (
+            f"[{k}]🏗  Arch:[/{k}] {info['arch']}\n\n"
+            f"[{k}]⚖  Params:[/{k}] {info['params']}\n\n"
+            f"[{k}]📐 Context:[/{k}] {info['context']}"
         )
+        right = (
+            f"[{k}]🔗 Embed:[/{k}] {info['embedding']}\n\n"
+            f"[{k}]🗜  Quant:[/{k}] {info['quant']}\n\n"
+            f"[{k}]✨ Caps:[/{k}] {caps}"
+        )
+        return left, right
 
 
 class ModelSelectModal(ModalScreen):
