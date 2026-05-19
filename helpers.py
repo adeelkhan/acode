@@ -35,7 +35,7 @@ def get_model_info(model: str) -> dict:
         raw_count = mi.get("general.parameter_count", 0)
         if raw_count and isinstance(raw_count, int):
             if raw_count >= 1_000_000_000_000:
-                params = f"{raw_count / 1e12:.1f}T".rstrip("0").rstrip(".")
+                params = f"{raw_count / 1e12:.1f}".rstrip("0").rstrip(".") + "T"
             elif raw_count >= 1_000_000_000:
                 params = f"{raw_count / 1e9:.0f}B"
             else:
