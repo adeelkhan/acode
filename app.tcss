@@ -9,6 +9,16 @@ Screen {
     height: auto;
 }
 
+#model-info-bar {
+    border: round $primary;
+    border-title-color: orange;
+    border-title-align: left;
+    margin: 0 1 1 1;
+    padding: 0 1;
+    height: auto;
+    color: $text;
+}
+
 #output-scroll {
     height: 1fr;
     padding: 0 1;
