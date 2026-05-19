@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 
-from helpers import check_ollama, get_model_info
+from helpers import check_ollama, get_model_info, list_models
 
 
 def _model(name: str) -> MagicMock:
@@ -132,3 +132,25 @@ def test_get_model_info_exception_returns_all_na():
         info = get_model_info("missing-model")
     assert info == dict(arch="N/A", params="N/A", context="N/A",
                         embedding="N/A", quant="N/A", capabilities=[])
+
+
+# ── list_models ───────────────────────────────────────────────────────────────
+
+def test_list_models_returns_model_names():
+    with patch("helpers.ollama.list") as mock_list:
+        mock_list.return_value.models = [_model("llama3:latest"), _model("mistral:7b")]
+        result = list_models()
+    assert result == ["llama3:latest", "mistral:7b"]
+
+
+def test_list_models_returns_empty_list_on_error():
+    with patch("helpers.ollama.list", side_effect=Exception("connection refused")):
+        result = list_models()
+    assert result == []
+
+
+def test_list_models_returns_empty_list_when_no_models():
+    with patch("helpers.ollama.list") as mock_list:
+        mock_list.return_value.models = []
+        result = list_models()
+    assert result == []

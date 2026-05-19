@@ -1,5 +1,5 @@
 from textual.screen import ModalScreen
-from textual.widgets import Static, Markdown, Button
+from textual.widgets import Static, Markdown, Button, ListView, ListItem
 from textual.containers import Container, Horizontal
 
 from helpers import copy_to_clipboard, get_model_info
@@ -7,10 +7,19 @@ from helpers import copy_to_clipboard, get_model_info
 
 class ModelInfoBar(Static):
     def __init__(self, model: str) -> None:
+        super().__init__(self._make_content(model), id="model-info-bar", markup=True)
+        self.border_title = model
+
+    def set_model(self, model: str) -> None:
+        self.update(self._make_content(model))
+        self.border_title = model
+
+    @staticmethod
+    def _make_content(model: str) -> str:
         info = get_model_info(model)
         k = "bold orange1"
         caps = "  ·  ".join(info["capabilities"]) if info["capabilities"] else "N/A"
-        content = (
+        return (
             f"[{k}]Arch:[/{k}] {info['arch']}    "
             f"[{k}]Params:[/{k}] {info['params']}    "
             f"[{k}]Context:[/{k}] {info['context']}    "
@@ -18,8 +27,30 @@ class ModelInfoBar(Static):
             f"[{k}]Quant:[/{k}] {info['quant']}\n"
             f"[{k}]Capabilities:[/{k}] {caps}"
         )
-        super().__init__(content, id="model-info-bar", markup=True)
-        self.border_title = model
+
+
+class ModelSelectModal(ModalScreen):
+    def __init__(self, models: list[str]) -> None:
+        super().__init__()
+        self._models = models
+
+    def compose(self):
+        with Container(id="model-select-dialog"):
+            yield ListView(
+                *[ListItem(Static(m), name=m) for m in self._models],
+                id="model-list",
+            )
+
+    def on_mount(self) -> None:
+        self.query_one("#model-select-dialog").border_title = "Switch Model"
+        self.query_one(ListView).focus()
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        self.dismiss(event.item.name)
+
+    def on_key(self, event) -> None:
+        if event.key == "escape":
+            self.dismiss(None)
 
 
 class OllamaErrorModal(ModalScreen):

@@ -5,8 +5,8 @@ from textual.containers import VerticalScroll, Vertical
 from textual import work
 
 from agent import ReactAgent
-from helpers import check_ollama
-from widgets import AgentCard, ModelInfoBar, OllamaErrorModal, ThinkingIndicator
+from helpers import check_ollama, list_models
+from widgets import AgentCard, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
 
 
 LOGO = (Path(__file__).parent / "logo.txt").read_text().strip()
@@ -81,7 +81,25 @@ class AcodeApp(App):
         if not user_text or self._busy:
             return
         event.input.clear()
+        if user_text == "/model":
+            self._show_model_selector()
+            return
         self._process_input(user_text)
+
+    def _show_model_selector(self) -> None:
+        models = list_models()
+        if not models:
+            self.notify("No models found — is Ollama running?", severity="error")
+            return
+
+        def on_selected(model: str | None) -> None:
+            if not model:
+                return
+            self.agent.model = model
+            self.query_one(ModelInfoBar).set_model(model)
+            self.notify(f"Switched to {model}", timeout=3)
+
+        self.push_screen(ModelSelectModal(models), on_selected)
 
     @work(thread=True)
     def _process_input(self, user_text: str) -> None:

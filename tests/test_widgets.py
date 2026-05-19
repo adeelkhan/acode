@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from widgets import AgentCard, CopyButton, ModelInfoBar, OllamaErrorModal, ThinkingIndicator
+from widgets import AgentCard, CopyButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
 
 _FAKE_INFO = dict(
     arch="llama", params="7B", context="128K",
@@ -70,6 +70,38 @@ def test_model_info_bar_calls_get_model_info_with_model_name():
     with patch("widgets.get_model_info", return_value=_FAKE_INFO) as mock_fn:
         ModelInfoBar("devstral:latest")
     mock_fn.assert_called_once_with("devstral:latest")
+
+
+# ── ModelInfoBar.set_model ────────────────────────────────────────────────────
+
+def test_model_info_bar_set_model_updates_border_title():
+    with patch("widgets.get_model_info", return_value=_FAKE_INFO):
+        bar = ModelInfoBar("llama3:7b")
+    new_info = {**_FAKE_INFO, "arch": "mistral", "params": "7B"}
+    with patch("widgets.get_model_info", return_value=new_info):
+        bar.set_model("mistral:7b")
+    assert bar.border_title == "mistral:7b"
+
+
+def test_model_info_bar_set_model_calls_get_model_info():
+    with patch("widgets.get_model_info", return_value=_FAKE_INFO):
+        bar = ModelInfoBar("llama3:7b")
+    with patch("widgets.get_model_info", return_value=_FAKE_INFO) as mock_fn:
+        bar.set_model("qwen2:7b")
+    mock_fn.assert_called_once_with("qwen2:7b")
+
+
+# ── ModelSelectModal ──────────────────────────────────────────────────────────
+
+def test_model_select_modal_stores_models():
+    models = ["llama3:latest", "mistral:7b", "qwen2:7b"]
+    modal = ModelSelectModal(models)
+    assert modal._models == models
+
+
+def test_model_select_modal_accepts_empty_list():
+    modal = ModelSelectModal([])
+    assert modal._models == []
 
 
 # ── OllamaErrorModal ──────────────────────────────────────────────────────────

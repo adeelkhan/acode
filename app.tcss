@@ -35,6 +35,28 @@ Screen {
 
 /* ── cards ─────────────────────────────────────────────── */
 
+/* ── model select modal ─────────────────────────────────── */
+
+ModelSelectModal {
+    align: center middle;
+}
+
+#model-select-dialog {
+    border: round $accent;
+    border-title-color: $accent;
+    border-title-align: center;
+    background: $surface;
+    width: 52;
+    height: auto;
+    max-height: 24;
+    padding: 1 2;
+}
+
+#model-list {
+    height: auto;
+    max-height: 18;
+}
+
 /* ── error modal ────────────────────────────────────────── */
 
 OllamaErrorModal {
