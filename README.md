@@ -4,7 +4,7 @@ A terminal user interface (TUI) for conversational AI powered by local LLMs via 
 
 ## Screenshot
 
-![acode screenshot](screen_shot.png?raw=true)
+![acode screenshot](screenshot.png?raw=true)
 
 ## Features
 
