@@ -11,17 +11,19 @@ A terminal user interface (TUI) for conversational AI powered by local LLMs via 
 ██╔══██║██║     ██║   ██║██║  ██║██╔══╝
 ██║  ██║╚██████╗╚██████╔╝██████╔╝███████╗
 ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝
-         Agentic ReAct Terminal
 ```
 
 ## Features
 
 - **ReAct agentic loop** — the agent reasons, calls tools, observes results, and iterates until it has a final answer
 - **Markdown rendering** — LLM responses are rendered with full formatting (headers, bold, code blocks, lists)
+- **Model info bar** — shows architecture, parameter count, context length, embedding size, quantization, and capabilities for the active model
+- **Runtime model switching** — type `/model` to open a list of available Ollama models and switch without restarting
 - **Clipboard copy** — click any agent response card and press `c`, or click the `⧉` button to copy to clipboard
 - **Animated thinking indicator** — flipping ⏳/⌛ shows while the model is inferring
 - **In-memory conversation history** — context is preserved across turns within a session
 - **Tool fallback** — works with models that return tool calls as JSON text (e.g. `qwen2.5-coder`)
+- **Shell security** — `shell_exec` is restricted to the project directory; destructive commands and sensitive paths are blocked at both the prompt and code level
 
 ## Tools
 
@@ -30,7 +32,7 @@ A terminal user interface (TUI) for conversational AI powered by local LLMs via 
 | `web_search` | Search the web via DuckDuckGo |
 | `web_fetch` | Fetch and return the content of a URL |
 | `get_weather` | Current weather for any location (via wttr.in, no API key needed) |
-| `shell_exec` | Execute shell commands on the local machine |
+| `shell_exec` | Execute shell commands within the project directory |
 
 ## Requirements
 
@@ -73,14 +75,24 @@ python app.py qwen2.5-coder:7b
 | `Ctrl+R` | Reset conversation history |
 | `Ctrl+Q` | Quit |
 
+## Slash Commands
+
+| Command | Action |
+|---------|--------|
+| `/model` | Open model selector — pick any model from `ollama list` |
+
 ## Project Structure
 
 ```
 acode/
-├── app.py       # Textual TUI — layout, widgets, event handling
-├── app.tcss     # Textual CSS — styles for all card types
-├── agent.py     # ReactAgent — ReAct loop, Ollama integration
-└── tools.py     # Tool implementations and definitions
+├── app.py        # Textual TUI — layout, event handling, slash commands
+├── app.tcss      # Textual CSS — styles for all card types and modals
+├── agent.py      # ReactAgent — ReAct loop, Ollama integration
+├── tools.py      # Tool implementations and definitions
+├── helpers.py    # Utility functions — Ollama checks, model info
+├── widgets.py    # All Textual widget classes
+├── logo.txt      # ASCII logo
+└── tests/        # Pytest test suite (106 tests)
 ```
 
 ## Recommended Models
@@ -90,3 +102,10 @@ Models with native tool-calling support work best:
 - `minimax-m2.5:cloud` — default, strong tool use
 - `qwen2.5-coder:7b` — good for coding tasks (JSON tool call fallback active)
 - `mistral:latest` — general purpose
+
+## Running Tests
+
+```bash
+source venv/bin/activate
+pytest -v
+```
