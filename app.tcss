@@ -103,7 +103,7 @@ OllamaErrorModal {
 
 .agent-card {
     border: round $accent;
-    margin: 0 1 1 1;
+    margin: 0 1 1 8;
     padding: 0 1;
     height: auto;
 }
