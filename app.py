@@ -6,7 +6,11 @@ from textual import work
 
 from agent import ReactAgent
 from helpers import check_ollama, list_models
-from widgets import AgentCard, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
+from widgets import AgentCard, CommandHints, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
+
+SLASH_COMMANDS: dict[str, str] = {
+    "/model": "Switch the active model",
+}
 
 
 LOGO = (Path(__file__).parent / "logo.txt").read_text().strip()
@@ -30,7 +34,8 @@ class AcodeApp(App):
         yield ModelInfoBar(self.agent.model)
         yield VerticalScroll(id="output-scroll")
         with Vertical(id="input-container"):
-            yield Input(placeholder="Type your message and press Enter...", id="user-input")
+            yield CommandHints(id="cmd-hints", markup=True)
+            yield Input(placeholder="Type a message or /command...", id="user-input")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -76,11 +81,22 @@ class AcodeApp(App):
 
     # ── input handling ────────────────────────────────────────────────────────
 
+    def on_input_changed(self, event: Input.Changed) -> None:
+        value = event.value
+        hints = self.query_one(CommandHints)
+        if value.startswith("/"):
+            matches = [(cmd, desc) for cmd, desc in SLASH_COMMANDS.items()
+                       if cmd.startswith(value)]
+            hints.show(matches)
+        else:
+            hints.hide()
+
     def on_input_submitted(self, event: Input.Submitted) -> None:
         user_text = event.value.strip()
         if not user_text or self._busy:
             return
         event.input.clear()
+        self.query_one(CommandHints).hide()
         if user_text == "/model":
             self._show_model_selector()
             return

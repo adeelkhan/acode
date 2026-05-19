@@ -5,6 +5,24 @@ from textual.containers import Container, Horizontal
 from helpers import copy_to_clipboard, get_model_info
 
 
+class CommandHints(Static):
+    """Hint strip shown above the input when the user types a slash command."""
+
+    def show(self, commands: list[tuple[str, str]]) -> None:
+        if not commands:
+            self.display = False
+            return
+        parts = "    ".join(
+            f"[bold cyan]{cmd}[/bold cyan] [dim]{desc}[/dim]"
+            for cmd, desc in commands
+        )
+        self.update(parts)
+        self.display = True
+
+    def hide(self) -> None:
+        self.display = False
+
+
 class ModelInfoBar(Static):
     def __init__(self, model: str) -> None:
         super().__init__(self._make_content(model), id="model-info-bar", markup=True)

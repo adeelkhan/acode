@@ -29,6 +29,13 @@ Screen {
     padding: 0 1;
 }
 
+#cmd-hints {
+    display: none;
+    padding: 0 1;
+    height: auto;
+    color: $text-muted;
+}
+
 #user-input {
     border: round $success;
 }
