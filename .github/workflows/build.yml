@@ -13,8 +13,6 @@ jobs:
         include:
           - os: macos-latest        # arm64 (M-series)
             asset_name: acode-macos-arm64
-          - os: macos-13            # x86_64
-            asset_name: acode-macos-x86_64
           - os: ubuntu-latest
             asset_name: acode-linux-x86_64
           - os: windows-latest
