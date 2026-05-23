@@ -32,7 +32,8 @@ def test_thinking_indicator_starts_at_frame_zero():
 
 
 def test_thinking_indicator_has_two_frames():
-    assert len(ThinkingIndicator.FRAMES) == 2
+    assert len(ThinkingIndicator.FRAMES_RIGHT) == 2
+    assert len(ThinkingIndicator.FRAMES_LEFT) == 2
 
 
 def test_thinking_indicator_tick_advances_frame():
@@ -41,6 +42,61 @@ def test_thinking_indicator_tick_advances_frame():
     assert indicator._frame == 1
     indicator._tick()
     assert indicator._frame == 0  # wraps back
+
+
+def test_thinking_indicator_starts_moving_right():
+    indicator = ThinkingIndicator()
+    assert indicator._direction == 1
+
+
+def test_thinking_indicator_position_advances_on_open_frame():
+    indicator = ThinkingIndicator()
+    # tick once → frame=1 (closed), pos stays 0
+    indicator._tick()
+    assert indicator._pos == 0
+    # tick again → frame=0 (open), pos advances
+    indicator._tick()
+    assert indicator._pos == 1
+
+
+def test_thinking_indicator_reverses_at_right_end():
+    indicator = ThinkingIndicator()
+    indicator._pos = ThinkingIndicator.NUM_DOTS - 1
+    indicator._direction = 1
+    indicator._frame = 1   # force next tick to open mouth and move
+    indicator._tick()      # frame→0, pos would go to NUM_DOTS but clamps
+    assert indicator._direction == -1
+
+
+def test_thinking_indicator_reverses_at_left_end():
+    indicator = ThinkingIndicator()
+    indicator._pos = 0
+    indicator._direction = -1
+    indicator._frame = 1
+    indicator._tick()      # frame→0, pos would go negative but clamps
+    assert indicator._direction == 1
+
+
+def test_thinking_indicator_render_contains_thinking_text():
+    indicator = ThinkingIndicator()
+    result = indicator.render()
+    assert "Thinking" in result.plain
+
+
+def test_thinking_indicator_render_contains_pacman_open_right():
+    indicator = ThinkingIndicator()
+    indicator._frame = 0
+    indicator._direction = 1
+    result = indicator.render()
+    assert ThinkingIndicator.FRAMES_RIGHT[0] in result.plain
+
+
+def test_thinking_indicator_render_contains_pacman_open_left():
+    indicator = ThinkingIndicator()
+    indicator._frame = 0
+    indicator._direction = -1
+    result = indicator.render()
+    assert ThinkingIndicator.FRAMES_LEFT[0] in result.plain
 
 
 # ── CopyButton ────────────────────────────────────────────────────────────────
