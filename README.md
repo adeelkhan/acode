@@ -13,7 +13,6 @@ A terminal user interface (TUI) for conversational AI powered by local LLMs via 
 - **Model info bar** — shows architecture, parameter count, context length, embedding size, quantization, and capabilities for the active model
 - **Runtime model switching** — type `/model` to open a list of available Ollama models and switch without restarting
 - **Clipboard copy** — click any agent response card and press `c`, or click the `⧉` button to copy to clipboard
-- **Animated thinking indicator** — flipping ⏳/⌛ shows while the model is inferring
 - **In-memory conversation history** — context is preserved across turns within a session
 - **Tool fallback** — works with models that return tool calls as JSON text (e.g. `qwen2.5-coder`)
 - **Shell security** — `shell_exec` is restricted to the project directory; destructive commands and sensitive paths are blocked at both the prompt and code level
