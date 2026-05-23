@@ -1,8 +1,45 @@
+from rich.text import Text
 from textual.screen import ModalScreen
+from textual.widget import Widget
 from textual.widgets import Static, Markdown, Button, ListView, ListItem
 from textual.containers import Container, Horizontal
 
 from helpers import copy_to_clipboard, get_model_info
+
+
+class ThinkingIndicator(Widget):
+    FRAMES_RIGHT = ["ᗧ", "●"]
+    FRAMES_LEFT  = ["ᗤ", "●"]
+    DOT = "·"
+    NUM_DOTS = 12
+
+    def __init__(self) -> None:
+        super().__init__(classes="thinking-card")
+        self._pos = 0
+        self._direction = 1   # +1 = right, -1 = left
+        self._frame = 0       # 0 = open, 1 = closed
+
+    def on_mount(self) -> None:
+        self.set_interval(0.18, self._tick)
+
+    def _tick(self) -> None:
+        self._frame = (self._frame + 1) % 2
+        if self._frame == 0:
+            self._pos += self._direction
+            if self._pos >= self.NUM_DOTS - 1:
+                self._direction = -1
+            elif self._pos <= 0:
+                self._direction = 1
+        self.refresh()
+
+    def render(self) -> Text:
+        if self._direction == 1:
+            pacman = self.FRAMES_RIGHT[self._frame]
+            row = "  " * self._pos + pacman + (" " + self.DOT) * (self.NUM_DOTS - self._pos - 1)
+        else:
+            pacman = self.FRAMES_LEFT[self._frame]
+            row = (self.DOT + " ") * self._pos + pacman + "  " * (self.NUM_DOTS - self._pos - 1)
+        return Text("Thinking.. " + row)
 
 
 class CommandHints(Static):
@@ -99,20 +136,6 @@ class OllamaErrorModal(ModalScreen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.app.exit()
 
-
-class ThinkingIndicator(Static):
-    FRAMES = ["⏳", "⌛"]
-
-    def __init__(self) -> None:
-        super().__init__(self.FRAMES[0] + " Thinking...", classes="thinking-card", markup=True)
-        self._frame = 0
-
-    def on_mount(self) -> None:
-        self.set_interval(0.45, self._tick)
-
-    def _tick(self) -> None:
-        self._frame = (self._frame + 1) % len(self.FRAMES)
-        self.update(f"{self.FRAMES[self._frame]} Thinking...")
 
 
 class CopyButton(Static):
