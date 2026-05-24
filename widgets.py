@@ -144,8 +144,11 @@ class CopyButton(Static):
         self.tooltip = "Copy"
 
     def on_click(self) -> None:
-        if isinstance(self.parent, AgentCard):
-            copy_to_clipboard(self.parent._text)
+        if self.parent is None:
+            return
+        card = self.parent.parent
+        if isinstance(card, AgentCard):
+            copy_to_clipboard(card._text)
             self.app.notify("Copied to clipboard", timeout=2)
 
 
