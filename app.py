@@ -5,14 +5,14 @@ from pathlib import Path
 from subprocess import DEVNULL
 
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Input, Static
+from textual.widgets import Footer, Static
 from textual.containers import VerticalScroll, Vertical, Horizontal
 from textual import work
 
 import audio
 from agent import ReactAgent
 from helpers import check_ollama, list_models
-from widgets import AgentCard, CommandHints, MicButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
+from widgets import AgentCard, CommandHints, MicButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, SubmittableTextArea, ThinkingIndicator
 
 SLASH_COMMANDS: dict[str, str] = {
     "/model": "Switch the active model",
@@ -54,7 +54,7 @@ class AcodeApp(App):
         with Vertical(id="input-container"):
             yield CommandHints(id="cmd-hints", markup=True)
             with Horizontal(id="input-row"):
-                yield Input(placeholder="Type a message or /command...", id="user-input")
+                yield SubmittableTextArea(id="user-input", show_line_numbers=False)
                 yield MicButton()
         yield Footer()
 
@@ -69,7 +69,7 @@ class AcodeApp(App):
             "Click any agent response and press [bold]c[/bold] to copy it.",
             css_class="welcome-card",
         )
-        self.query_one("#user-input", Input).focus()
+        self.query_one("#user-input", SubmittableTextArea).focus()
 
     def _disable_mic(self, reason: str) -> None:
         btn = self.query_one("#mic-btn")
@@ -142,17 +142,18 @@ class AcodeApp(App):
             wav_bytes = self._recorder.stop_and_encode()
             text = audio.transcribe(wav_bytes)
             def _insert() -> None:
-                inp = self.query_one("#user-input", Input)
-                inp.value = text
-                inp.focus()
+                ta = self.query_one("#user-input", SubmittableTextArea)
+                ta.load_text(text)
+                ta.move_cursor((0, 0))
+                ta.focus()
             self.call_from_thread(_insert)
         except Exception as e:
             self.call_from_thread(self.notify, f"Transcription failed: {e}", severity="error")
 
     # ── input handling ────────────────────────────────────────────────────────
 
-    def on_input_changed(self, event: Input.Changed) -> None:
-        value = event.value
+    def on_text_area_changed(self, event) -> None:
+        value = event.text_area.text
         hints = self.query_one(CommandHints)
         if value.startswith("/"):
             matches = [(cmd, desc) for cmd, desc in SLASH_COMMANDS.items()
@@ -161,11 +162,10 @@ class AcodeApp(App):
         else:
             hints.hide()
 
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        user_text = event.value.strip()
+    def on_submittable_text_area_submitted(self, event: SubmittableTextArea.Submitted) -> None:
+        user_text = event.text.strip()
         if not user_text or self._busy:
             return
-        event.input.clear()
         self.query_one(CommandHints).hide()
         if user_text == "/model":
             self._show_model_selector()
@@ -234,7 +234,7 @@ class AcodeApp(App):
             )
         finally:
             self._busy = False
-            self.call_from_thread(self.query_one("#user-input", Input).focus)
+            self.call_from_thread(self.query_one("#user-input", SubmittableTextArea).focus)
 
     # ── actions ───────────────────────────────────────────────────────────────
 

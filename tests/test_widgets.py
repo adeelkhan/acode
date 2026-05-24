@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from widgets import AgentCard, CopyButton, MicButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
+from widgets import AgentCard, CopyButton, MicButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, SubmittableTextArea, ThinkingIndicator
 
 _FAKE_INFO = dict(
     arch="llama", params="7B", context="128K",
@@ -193,3 +193,46 @@ def test_ollama_error_modal_stores_title():
 def test_ollama_error_modal_stores_message():
     modal = OllamaErrorModal("Bad Title", "Something went wrong")
     assert modal._message == "Something went wrong"
+
+
+# ── SubmittableTextArea ───────────────────────────────────────────────────────
+
+def test_submittable_text_area_instantiates():
+    ta = SubmittableTextArea(id="user-input", show_line_numbers=False)
+    assert ta is not None
+
+
+def test_submittable_text_area_submitted_message_stores_text():
+    msg = SubmittableTextArea.Submitted("hello world")
+    assert msg.text == "hello world"
+
+
+def test_submittable_text_area_submitted_message_stores_empty_string():
+    msg = SubmittableTextArea.Submitted("")
+    assert msg.text == ""
+
+
+def test_submittable_text_area_has_submitted_message_class():
+    assert hasattr(SubmittableTextArea, "Submitted")
+
+
+def test_submittable_text_area_on_key_enter_submits():
+    from unittest.mock import MagicMock
+    ta = SubmittableTextArea()
+    ta.post_message = MagicMock()
+    ta.clear = MagicMock()
+    event = MagicMock()
+    event.key = "enter"
+    ta.on_key(event)
+    event.prevent_default.assert_called_once()
+    ta.post_message.assert_called_once()
+
+
+def test_submittable_text_area_on_key_other_keys_do_not_submit():
+    from unittest.mock import MagicMock
+    ta = SubmittableTextArea()
+    ta.post_message = MagicMock()
+    event = MagicMock()
+    event.key = "space"
+    ta.on_key(event)
+    ta.post_message.assert_not_called()

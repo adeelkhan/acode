@@ -2,10 +2,25 @@ from rich.text import Text
 from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widget import Widget
-from textual.widgets import Static, Markdown, Button, ListView, ListItem
+from textual.widgets import Static, Markdown, Button, ListView, ListItem, TextArea
 from textual.containers import Container, Horizontal
 
 from helpers import copy_to_clipboard, get_model_info
+
+
+class SubmittableTextArea(TextArea):
+    """TextArea that submits on bare Enter; Shift+Enter inserts a newline."""
+
+    class Submitted(Message):
+        def __init__(self, text: str) -> None:
+            super().__init__()
+            self.text = text
+
+    def on_key(self, event) -> None:
+        if event.key == "enter":
+            event.prevent_default()
+            self.post_message(self.Submitted(self.text))
+            self.clear()
 
 
 class ThinkingIndicator(Widget):
