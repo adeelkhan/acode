@@ -1,4 +1,5 @@
 from rich.text import Text
+from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widget import Widget
 from textual.widgets import Static, Markdown, Button, ListView, ListItem
@@ -171,3 +172,27 @@ class AgentCard(Container):
     def action_copy_content(self) -> None:
         copy_to_clipboard(self._text)
         self.notify("Copied to clipboard", timeout=2)
+
+
+class MicButton(Button):
+    class Toggled(Message):
+        def __init__(self, recording: bool) -> None:
+            super().__init__()
+            self.recording = recording
+
+    def __init__(self) -> None:
+        super().__init__("🎙", id="mic-btn")
+        self._recording = False
+
+    def _toggle(self) -> None:
+        self._recording = not self._recording
+        if self._recording:
+            self.label = "⏹"
+            self.add_class("recording")
+        else:
+            self.label = "🎙"
+            self.remove_class("recording")
+        self.post_message(self.Toggled(self._recording))
+
+    def on_click(self) -> None:
+        self._toggle()

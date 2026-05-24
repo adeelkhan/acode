@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from widgets import AgentCard, CopyButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
+from widgets import AgentCard, CopyButton, MicButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
 
 _FAKE_INFO = dict(
     arch="llama", params="7B", context="128K",
@@ -97,6 +97,29 @@ def test_thinking_indicator_render_contains_pacman_open_left():
     indicator._direction = -1
     result = indicator.render()
     assert ThinkingIndicator.FRAMES_LEFT[0] in result.plain
+
+
+# ── MicButton ─────────────────────────────────────────────────────────────────
+
+def test_mic_button_initial_state_not_recording():
+    btn = MicButton()
+    assert btn._recording is False
+    assert str(btn.label) == "🎙"
+
+
+def test_mic_button_toggle_starts_recording():
+    btn = MicButton()
+    btn._toggle()
+    assert btn._recording is True
+    assert str(btn.label) == "⏹"
+
+
+def test_mic_button_double_toggle_returns_to_idle():
+    btn = MicButton()
+    btn._toggle()
+    btn._toggle()
+    assert btn._recording is False
+    assert str(btn.label) == "🎙"
 
 
 # ── CopyButton ────────────────────────────────────────────────────────────────

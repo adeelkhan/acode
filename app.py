@@ -1,17 +1,32 @@
+import atexit
+import os
+import subprocess
 from pathlib import Path
+from subprocess import DEVNULL
+
 from textual.app import App, ComposeResult
 from textual.widgets import Footer, Input, Static
 from textual.containers import VerticalScroll, Vertical, Horizontal
 from textual import work
 
+import audio
 from agent import ReactAgent
 from helpers import check_ollama, list_models
-from widgets import AgentCard, CommandHints, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
+from widgets import AgentCard, CommandHints, MicButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, ThinkingIndicator
 
 SLASH_COMMANDS: dict[str, str] = {
     "/model": "Switch the active model",
 }
 
+WHISPER_SERVER_BIN = os.environ.get(
+    "WHISPER_SERVER",
+    "/Users/adeelkhan/learnStuff/soundStuff/tts/whisper.cpp/build/bin/whisper-server",
+)
+WHISPER_MODEL = os.environ.get(
+    "WHISPER_MODEL",
+    "/Users/adeelkhan/learnStuff/soundStuff/tts/whisper.cpp/models/ggml-base.en.bin",
+)
+WHISPER_PORT = 8080
 
 LOGO = (Path(__file__).parent / "logo.txt").read_text().strip()
 
@@ -28,6 +43,8 @@ class AcodeApp(App):
         super().__init__()
         self.agent = ReactAgent(model=model)
         self._busy = False
+        self._recorder = audio.AudioRecorder()
+        self._whisper_proc: subprocess.Popen | None = None
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="header"):
@@ -36,10 +53,13 @@ class AcodeApp(App):
         yield VerticalScroll(id="output-scroll")
         with Vertical(id="input-container"):
             yield CommandHints(id="cmd-hints", markup=True)
-            yield Input(placeholder="Type a message or /command...", id="user-input")
+            with Horizontal(id="input-row"):
+                yield Input(placeholder="Type a message or /command...", id="user-input")
+                yield MicButton()
         yield Footer()
 
     def on_mount(self) -> None:
+        self._start_whisper_server()
         ok, title, error = check_ollama(self.agent.model)
         if not ok:
             self.push_screen(OllamaErrorModal(title, error))
@@ -50,6 +70,26 @@ class AcodeApp(App):
             css_class="welcome-card",
         )
         self.query_one("#user-input", Input).focus()
+
+    def _start_whisper_server(self) -> None:
+        if not os.path.exists(WHISPER_SERVER_BIN):
+            self.notify("whisper-server not found — mic disabled", severity="warning", timeout=5)
+            return
+        proc = subprocess.Popen(
+            [
+                WHISPER_SERVER_BIN,
+                "--host", "127.0.0.1",
+                "--port", str(WHISPER_PORT),
+                "-m", WHISPER_MODEL,
+                "--threads", "4",
+                "--convert",
+                "-ac", "750",
+            ],
+            stdout=DEVNULL,
+            stderr=DEVNULL,
+        )
+        atexit.register(proc.terminate)
+        self._whisper_proc = proc
 
     # ── card helpers ──────────────────────────────────────────────────────────
 
@@ -79,6 +119,27 @@ class AcodeApp(App):
             self.query_one("#thinking-indicator").remove()
         except Exception:
             pass
+
+    # ── mic handling ──────────────────────────────────────────────────────────
+
+    def on_mic_button_toggled(self, event: MicButton.Toggled) -> None:
+        if event.recording:
+            self._recorder.start()
+        else:
+            self._stop_and_transcribe()
+
+    @work(thread=True)
+    def _stop_and_transcribe(self) -> None:
+        try:
+            wav_bytes = self._recorder.stop_and_encode()
+            text = audio.transcribe(wav_bytes)
+            def _insert() -> None:
+                inp = self.query_one("#user-input", Input)
+                inp.value = text
+                inp.focus()
+            self.call_from_thread(_insert)
+        except Exception as e:
+            self.call_from_thread(self.notify, f"Transcription failed: {e}", severity="error")
 
     # ── input handling ────────────────────────────────────────────────────────
 
@@ -176,6 +237,8 @@ class AcodeApp(App):
         self._add_card("[bold cyan]Conversation reset.[/bold cyan]", css_class="welcome-card")
 
     def action_quit(self) -> None:
+        if self._whisper_proc:
+            self._whisper_proc.terminate()
         self.exit()
 
 
