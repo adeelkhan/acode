@@ -71,6 +71,11 @@ Screen {
     color: $text;
 }
 
+#mic-btn:disabled {
+    color: $text-muted;
+    opacity: 0.4;
+}
+
 /* ── cards ─────────────────────────────────────────────── */
 
 /* ── model select modal ─────────────────────────────────── */

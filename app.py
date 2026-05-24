@@ -71,9 +71,17 @@ class AcodeApp(App):
         )
         self.query_one("#user-input", Input).focus()
 
+    def _disable_mic(self, reason: str) -> None:
+        btn = self.query_one("#mic-btn")
+        btn.disabled = True
+        btn.tooltip = reason
+
     def _start_whisper_server(self) -> None:
         if not os.path.exists(WHISPER_SERVER_BIN):
-            self.notify("whisper-server not found — mic disabled", severity="warning", timeout=5)
+            self._disable_mic("whisper-server binary not found")
+            return
+        if not os.path.exists(WHISPER_MODEL):
+            self._disable_mic("Whisper model file not found")
             return
         proc = subprocess.Popen(
             [
