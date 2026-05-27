@@ -1,0 +1,16 @@
+# Core UI
+textual==8.2.6
+
+# LLM / search
+ollama==0.6.2
+requests==2.34.2
+duckduckgo_search==8.1.1
+httpx==0.28.1
+
+# Audio / STT
+numpy==2.4.6
+scipy==1.17.1
+sounddevice==0.5.5
+
+# Testing
+pytest==9.0.3

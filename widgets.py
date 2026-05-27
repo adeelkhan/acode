@@ -1,10 +1,26 @@
 from rich.text import Text
+from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widget import Widget
-from textual.widgets import Static, Markdown, Button, ListView, ListItem
+from textual.widgets import Static, Markdown, Button, ListView, ListItem, TextArea
 from textual.containers import Container, Horizontal
 
 from helpers import copy_to_clipboard, get_model_info
+
+
+class SubmittableTextArea(TextArea):
+    """TextArea that submits on bare Enter; Shift+Enter inserts a newline."""
+
+    class Submitted(Message):
+        def __init__(self, text: str) -> None:
+            super().__init__()
+            self.text = text
+
+    def on_key(self, event) -> None:
+        if event.key == "enter":
+            event.prevent_default()
+            self.post_message(self.Submitted(self.text))
+            self.clear()
 
 
 class ThinkingIndicator(Widget):
@@ -144,8 +160,11 @@ class CopyButton(Static):
         self.tooltip = "Copy"
 
     def on_click(self) -> None:
-        if isinstance(self.parent, AgentCard):
-            copy_to_clipboard(self.parent._text)
+        if self.parent is None:
+            return
+        card = self.parent.parent
+        if isinstance(card, AgentCard):
+            copy_to_clipboard(card._text)
             self.app.notify("Copied to clipboard", timeout=2)
 
 
@@ -168,3 +187,27 @@ class AgentCard(Container):
     def action_copy_content(self) -> None:
         copy_to_clipboard(self._text)
         self.notify("Copied to clipboard", timeout=2)
+
+
+class MicButton(Button):
+    class Toggled(Message):
+        def __init__(self, recording: bool) -> None:
+            super().__init__()
+            self.recording = recording
+
+    def __init__(self) -> None:
+        super().__init__("🎙", id="mic-btn")
+        self._recording = False
+
+    def _toggle(self) -> None:
+        self._recording = not self._recording
+        if self._recording:
+            self.label = "⏹"
+            self.add_class("recording")
+        else:
+            self.label = "🎙"
+            self.remove_class("recording")
+        self.post_message(self.Toggled(self._recording))
+
+    def on_click(self) -> None:
+        self._toggle()

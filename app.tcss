@@ -47,8 +47,34 @@ Screen {
     color: $text-muted;
 }
 
+#input-row {
+    height: auto;
+    layout: horizontal;
+}
+
 #user-input {
+    width: 1fr;
+    height: 5;
     border: round $success;
+    scrollbar-size: 1 1;
+}
+
+#mic-btn {
+    width: 5;
+    min-width: 5;
+    height: 5;
+    border: none;
+}
+
+#mic-btn.recording {
+    background: $error;
+    border: none;
+    color: $text;
+}
+
+#mic-btn:disabled {
+    color: $text-muted;
+    opacity: 0.4;
 }
 
 /* ── cards ─────────────────────────────────────────────── */
