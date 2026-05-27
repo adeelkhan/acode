@@ -30,3 +30,14 @@ Thumbs.db
 
 # Textual devtools
 .textual/
+
+# Claude Code — ignore private/local state only; keep everything else
+.claude/local/
+.claude/cache/
+.claude/settings.local.json
+.claude/secrets.json
+
+# Stray local files
+hello
+hello.rs
+llama_eggball_article.txt
