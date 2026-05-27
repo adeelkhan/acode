@@ -5,6 +5,7 @@ from pathlib import Path
 from subprocess import DEVNULL
 
 from textual.app import App, ComposeResult
+from textual.css.query import NoMatches
 from textual.widgets import Footer, Static
 from textual.containers import VerticalScroll, Vertical, Horizontal
 from textual import work
@@ -28,7 +29,10 @@ WHISPER_MODEL = os.environ.get(
 )
 WHISPER_PORT = 8080
 
-LOGO = (Path(__file__).parent / "logo.txt").read_text().strip()
+try:
+    LOGO = (Path(__file__).parent / "logo.txt").read_text().strip()
+except FileNotFoundError:
+    LOGO = "acode"
 
 
 class AcodeApp(App):
@@ -44,6 +48,7 @@ class AcodeApp(App):
         self.agent = ReactAgent(model=model)
         self._busy = False
         self._recorder = audio.AudioRecorder()
+        atexit.register(self._recorder.close)
         self._whisper_proc: subprocess.Popen | None = None
 
     def compose(self) -> ComposeResult:
@@ -125,7 +130,7 @@ class AcodeApp(App):
     def _remove_thinking(self) -> None:
         try:
             self.query_one("#thinking-indicator").remove()
-        except Exception:
+        except NoMatches:
             pass
 
     # ── mic handling ──────────────────────────────────────────────────────────
@@ -170,6 +175,7 @@ class AcodeApp(App):
         if user_text == "/model":
             self._show_model_selector()
             return
+        self._busy = True  # set on main thread before spawning worker — prevents race condition
         self._process_input(user_text)
 
     def _show_model_selector(self) -> None:
@@ -189,7 +195,6 @@ class AcodeApp(App):
 
     @work(thread=True)
     def _process_input(self, user_text: str) -> None:
-        self._busy = True
         self.call_from_thread(
             self._add_card,
             f"[bold green]You[/bold green]\n{user_text}",
@@ -233,8 +238,10 @@ class AcodeApp(App):
                 css_class="error-card",
             )
         finally:
-            self._busy = False
-            self.call_from_thread(self.query_one("#user-input", SubmittableTextArea).focus)
+            def _finish() -> None:
+                self._busy = False
+                self.query_one("#user-input", SubmittableTextArea).focus()
+            self.call_from_thread(_finish)
 
     # ── actions ───────────────────────────────────────────────────────────────
 

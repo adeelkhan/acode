@@ -25,7 +25,7 @@ def check_ollama(model: str) -> tuple[bool, str, str]:
     return True, "", ""
 
 
-def list_models() -> list[str | None]:
+def list_models() -> list[str]:
     try:
         return [m.model for m in ollama.list().models]
     except Exception:

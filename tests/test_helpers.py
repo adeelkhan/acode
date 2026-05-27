@@ -154,3 +154,10 @@ def test_list_models_returns_empty_list_when_no_models():
         mock_list.return_value.models = []
         result = list_models()
     assert result == []
+
+
+def test_list_models_returns_only_strings():
+    with patch("helpers.ollama.list") as mock_list:
+        mock_list.return_value.models = [_model("llama3:latest"), _model("mistral:7b")]
+        result = list_models()
+    assert all(isinstance(m, str) for m in result)

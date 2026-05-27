@@ -57,3 +57,34 @@ def test_audio_recorder_stop_encode_returns_bytes_when_empty():
     result = recorder.stop_and_encode()
     assert isinstance(result, bytes)
     assert len(result) > 0   # WAV header is always present
+
+
+# ── AudioRecorder.close ───────────────────────────────────────────────────────
+
+def test_audio_recorder_close_stops_and_closes_stream():
+    recorder = audio.AudioRecorder()
+    mock_stream = MagicMock()
+    recorder._stream = mock_stream
+
+    recorder.close()
+
+    mock_stream.stop.assert_called_once()
+    mock_stream.close.assert_called_once()
+    assert recorder._stream is None
+
+
+def test_audio_recorder_close_is_safe_when_no_stream():
+    recorder = audio.AudioRecorder()
+    recorder._stream = None
+    recorder.close()  # must not raise
+
+
+def test_audio_recorder_close_is_idempotent():
+    recorder = audio.AudioRecorder()
+    mock_stream = MagicMock()
+    recorder._stream = mock_stream
+
+    recorder.close()
+    recorder.close()  # second call with _stream already None — must not raise
+
+    mock_stream.stop.assert_called_once()  # not called a second time

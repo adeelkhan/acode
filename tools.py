@@ -6,19 +6,23 @@ from duckduckgo_search import DDGS
 
 _CWD = os.getcwd()
 
-# (pattern, human-readable reason)
+# NOTE: This blocklist is best-effort defense-in-depth, not a security boundary.
+# A sufficiently creative prompt can bypass pattern matching; treat shell_exec
+# as a convenience tool for a trusted user, not an untrusted-input sandbox.
 _BLOCKED: list[tuple[str, str]] = [
-    (r"\brm\s+.*-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r", "destructive rm -rf"),
-    (r"\brmdir\b",                                   "rmdir"),
-    (r"\bmkfs\b",                                    "mkfs"),
-    (r"\bdd\b.*\bof=",                               "dd write"),
-    (r"\b(shutdown|reboot|poweroff|halt|init\s+0)\b","system shutdown/reboot"),
-    (r"\b(fdisk|parted|diskutil\s+erase)\b",         "disk partitioning"),
-    (r"\bsudo\b",                                    "sudo escalation"),
-    (r"\bsu\s",                                      "su escalation"),
-    (r"(~|/Users/\w+|/home/\w+)/\.ssh",             "SSH directory"),
-    (r"(~|/Users/\w+|/home/\w+)/\.aws",             "AWS credentials"),
-    (r"/etc/(passwd|shadow|sudoers)",                "sensitive system file"),
+    (r"\brm\b.*-[a-zA-Z]*[rR][a-zA-Z]*",            "recursive rm"),
+    (r"\brmdir\b",                                    "rmdir"),
+    (r"\bmkfs\b",                                     "mkfs"),
+    (r"\bdd\b.*\bof=",                                "dd write"),
+    (r"\b(shutdown|reboot|poweroff|halt|init\s+0)\b", "system shutdown/reboot"),
+    (r"\b(fdisk|parted|diskutil\s+erase)\b",          "disk partitioning"),
+    (r"\bsudo\b",                                     "sudo escalation"),
+    (r"\bsu\s",                                       "su escalation"),
+    # Chained dangerous commands (e.g. "echo x; rm -rf /tmp")
+    (r"[|;&]\s*(rm|sudo|su\s|shutdown|reboot|poweroff|halt)\b", "chained dangerous command"),
+    (r"(~|/Users/\w+|/home/\w+)/\.ssh",              "SSH directory"),
+    (r"(~|/Users/\w+|/home/\w+)/\.aws",              "AWS credentials"),
+    (r"/etc/(passwd|shadow|sudoers)",                 "sensitive system file"),
     (r"cd\s+(/(?!" + re.escape(_CWD.lstrip("/")) + r")|\.\.)", "cd outside project"),
 ]
 

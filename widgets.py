@@ -1,4 +1,5 @@
 from rich.text import Text
+from textual.app import ComposeResult
 from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widget import Widget
@@ -24,6 +25,15 @@ class SubmittableTextArea(TextArea):
 
 
 class ThinkingIndicator(Widget):
+    """Animated Pac-Man indicator shown while the agent is thinking.
+
+    A character bounces left and right across a row of dots, alternating
+    between open-mouth and closed-mouth frames. ``_tick`` is called by a
+    fixed interval timer set up in ``on_mount``; each tick advances the
+    frame and, on every open-mouth frame, moves the position by one step,
+    reversing direction at the edges.
+    """
+
     FRAMES_RIGHT = ["ᗧ", "●"]
     FRAMES_LEFT  = ["ᗤ", "●"]
     DOT = "·"
@@ -82,7 +92,7 @@ class ModelInfoBar(Horizontal):
         self.border_title = model
         self._left, self._right = self._make_columns(model)
 
-    def compose(self):
+    def compose(self) -> ComposeResult:
         yield Static(self._left, classes="info-col", markup=True)
         yield Static(self._right, classes="info-col", markup=True)
 
@@ -115,7 +125,7 @@ class ModelSelectModal(ModalScreen):
         super().__init__()
         self._models = models
 
-    def compose(self):
+    def compose(self) -> ComposeResult:
         with Container(id="model-select-dialog"):
             yield ListView(
                 *[ListItem(Static(m), name=m) for m in self._models],
@@ -140,7 +150,7 @@ class OllamaErrorModal(ModalScreen):
         self._title = title
         self._message = message
 
-    def compose(self):
+    def compose(self) -> ComposeResult:
         with Container(id="error-dialog"):
             yield Static(self._message, id="error-msg")
             with Horizontal(id="ok-row"):
@@ -164,7 +174,7 @@ class CopyButton(Static):
             return
         card = self.parent.parent
         if isinstance(card, AgentCard):
-            copy_to_clipboard(card._text)
+            copy_to_clipboard(card.get_text())
             self.app.notify("Copied to clipboard", timeout=2)
 
 
@@ -179,13 +189,17 @@ class AgentCard(Container):
         super().__init__(classes="agent-card")
         self._text = text
 
-    def compose(self):
+    def get_text(self) -> str:
+        """Return the raw Markdown text of this card."""
+        return self._text
+
+    def compose(self) -> ComposeResult:
         yield Markdown(self._text)
         with Horizontal(classes="copy-btn-row"):
             yield CopyButton()
 
     def action_copy_content(self) -> None:
-        copy_to_clipboard(self._text)
+        copy_to_clipboard(self.get_text())
         self.notify("Copied to clipboard", timeout=2)
 
 

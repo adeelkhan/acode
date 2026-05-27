@@ -10,6 +10,12 @@ from tools import _validate_command, shell_exec, web_fetch, web_search, get_weat
 @pytest.mark.parametrize("cmd", [
     "rm -rf /tmp",
     "rm -fr /tmp",
+    "rm -r /tmp",       # recursive without -f
+    "rm -R /tmp",       # uppercase R flag
+    "rm -rv /tmp",      # recursive + verbose
+    "echo x; rm /tmp",  # chained via semicolon
+    "ls && sudo echo",  # chained via &&
+    "ls | sudo cat",    # chained via pipe
     "rmdir somedir",
     "mkfs.ext4 /dev/sda",
     "dd if=/dev/zero of=/dev/sda",

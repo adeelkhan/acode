@@ -29,6 +29,13 @@ class AudioRecorder:
     def _callback(self, indata, frames, time, status) -> None:
         self._q.put(indata.copy())
 
+    def close(self) -> None:
+        """Release the audio stream if it is still open (e.g. app crash mid-recording)."""
+        if self._stream:
+            self._stream.stop()
+            self._stream.close()
+            self._stream = None
+
     def stop_and_encode(self) -> bytes:
         if self._stream:
             self._stream.stop()

@@ -205,6 +205,31 @@ def test_run_appends_tool_result_to_history():
     assert any(m["role"] == "tool" and m["content"] == "tool output" for m in agent.history)
 
 
+# ── run — iteration limit ─────────────────────────────────────────────────────
+
+def test_run_emits_error_when_iteration_limit_reached():
+    agent = ReactAgent(model="test")
+    tc = _tool_call("web_search", {"query": "loop"})
+    # Always return a tool call — agent will never produce a final answer
+    infinite_tool_response = _chat_response("", tool_calls=[tc])
+    with patch("agent.ollama.chat", return_value=infinite_tool_response):
+        with patch("agent.TOOL_DISPATCH", {"web_search": lambda _: "result"}):
+            events = _collect_events(agent, "loop forever")
+    error_events = [t for k, t in events if k == "error"]
+    assert error_events, "expected an error event after iteration limit"
+    assert "iteration" in error_events[-1].lower()
+
+
+def test_run_returns_empty_string_when_iteration_limit_reached():
+    agent = ReactAgent(model="test")
+    tc = _tool_call("web_search", {"query": "loop"})
+    infinite_tool_response = _chat_response("", tool_calls=[tc])
+    with patch("agent.ollama.chat", return_value=infinite_tool_response):
+        with patch("agent.TOOL_DISPATCH", {"web_search": lambda _: "result"}):
+            result = agent.run("loop forever", on_event=lambda _k, _t: None)
+    assert result == ""
+
+
 # ── reset ─────────────────────────────────────────────────────────────────────
 
 def test_reset_removes_conversation_messages():

@@ -7,6 +7,7 @@ def _bare_app() -> AcodeApp:
     """Instantiate AcodeApp without running Textual's __init__."""
     app = AcodeApp.__new__(AcodeApp)
     app._whisper_proc = None
+    app._busy = False
     return app
 
 
@@ -58,10 +59,8 @@ def test_start_whisper_server_disables_mic_when_model_missing():
     app = _bare_app()
     app._disable_mic = MagicMock()
 
-    def exists(path):
-        return "whisper-server" in path  # binary found, model not found
-
-    with patch("app.os.path.exists", side_effect=exists):
+    # First call (binary check) → True, second call (model check) → False
+    with patch("app.os.path.exists", side_effect=[True, False]):
         app._start_whisper_server()
 
     app._disable_mic.assert_called_once_with("Whisper model file not found")
@@ -103,3 +102,49 @@ def test_start_whisper_server_does_not_spawn_when_binary_missing():
         app._start_whisper_server()
 
     mock_popen.assert_not_called()
+
+
+# ── _busy race condition ───────────────────────────────────────────────────────
+
+def test_busy_is_set_before_process_input_is_called():
+    """_busy must be True on the main thread when _process_input is invoked."""
+    app = _bare_app()
+    busy_at_call_time = []
+
+    def capture_busy(_):
+        busy_at_call_time.append(app._busy)
+
+    app._process_input = MagicMock(side_effect=capture_busy)
+    app.query_one = MagicMock()
+
+    event = MagicMock()
+    event.text = "hello"
+    app.on_submittable_text_area_submitted(event)
+
+    assert busy_at_call_time == [True]
+
+
+def test_submit_while_busy_does_not_call_process_input():
+    app = _bare_app()
+    app._busy = True
+    app._process_input = MagicMock()
+    app.query_one = MagicMock()
+
+    event = MagicMock()
+    event.text = "hello"
+    app.on_submittable_text_area_submitted(event)
+
+    app._process_input.assert_not_called()
+
+
+def test_model_command_does_not_set_busy():
+    """Slash commands bypass the agent; _busy must not be left True."""
+    app = _bare_app()
+    app._show_model_selector = MagicMock()
+    app.query_one = MagicMock()
+
+    event = MagicMock()
+    event.text = "/model"
+    app.on_submittable_text_area_submitted(event)
+
+    assert app._busy is False

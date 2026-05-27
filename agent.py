@@ -5,6 +5,23 @@ from tools import TOOL_DEFINITIONS, TOOL_DISPATCH
 
 import os
 
+
+class _ToolFunction:
+    """Minimal stand-in for ollama's tool-call function object."""
+    __slots__ = ("name", "arguments")
+
+    def __init__(self, name: str, arguments: dict) -> None:
+        self.name = name
+        self.arguments = arguments
+
+
+class _ToolCall:
+    """Minimal stand-in for ollama's tool-call object."""
+    __slots__ = ("function",)
+
+    def __init__(self, name: str, arguments: dict) -> None:
+        self.function = _ToolFunction(name, arguments)
+
 _CWD = os.getcwd()
 
 SYSTEM_PROMPT = f"""You are a concise, accurate AI assistant with access to tools.
@@ -95,6 +112,9 @@ class ReactAgent:
                     "content": result,
                 })
 
+        if not final_response:
+            on_event("error", "Agent did not produce a response after reaching the iteration limit.")
+
         return final_response
 
     @staticmethod
@@ -105,17 +125,7 @@ class ReactAgent:
         try:
             data = json.loads(content.strip())
             if isinstance(data, dict) and "name" in data and "arguments" in data:
-                # Wrap in a minimal object that matches the tool_calls interface
-                class _Fn:
-                    def __init__(self, name, arguments):
-                        self.name = name
-                        self.arguments = arguments
-
-                class _TC:
-                    def __init__(self, name, arguments):
-                        self.function = _Fn(name, arguments)
-
-                return [_TC(data["name"], data["arguments"])]
+                return [_ToolCall(data["name"], data["arguments"])]
         except (json.JSONDecodeError, KeyError):
             pass
         return None
