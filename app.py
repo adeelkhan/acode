@@ -35,6 +35,27 @@ except FileNotFoundError:
     LOGO = "acode"
 
 
+def _truncate_path(path: str, max_len: int = 50) -> str:
+    """Truncate *path* to at most *max_len* chars, snapping to a directory boundary.
+
+    Short paths are returned verbatim.  Long ones have their head replaced with
+    "..." and the tail starts at the first "/" that keeps the total ≤ *max_len*,
+    e.g. ".../agentic_coding/acode".
+    """
+    if len(path) <= max_len:
+        return path
+    tail = path[-(max_len - 3):]          # raw tail with room for "..."
+    slash = tail.find("/")
+    if slash != -1:
+        tail = tail[slash:]               # snap to the nearest directory boundary
+    return "..." + tail
+
+
+def _format_cwd(max_len: int = 50) -> str:
+    """Return the current working directory, truncated via :func:`_truncate_path`."""
+    return _truncate_path(str(Path.cwd()), max_len)
+
+
 class AcodeApp(App):
     CSS_PATH = "app.tcss"
 
@@ -65,6 +86,7 @@ class AcodeApp(App):
 
     def on_mount(self) -> None:
         self._start_whisper_server()
+        self.query_one("#user-input", SubmittableTextArea).border_subtitle = _format_cwd()
         ok, title, error = check_ollama(self.agent.model)
         if not ok:
             self.push_screen(OllamaErrorModal(title, error))

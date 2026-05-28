@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from app import AcodeApp
+from app import AcodeApp, _truncate_path
 
 
 def _bare_app() -> AcodeApp:
@@ -148,3 +148,42 @@ def test_model_command_does_not_set_busy():
     app.on_submittable_text_area_submitted(event)
 
     assert app._busy is False
+
+
+# ── _truncate_path ────────────────────────────────────────────────────────────
+
+def test_truncate_path_short_path_returned_verbatim():
+    path = "/home/user/project"
+    assert _truncate_path(path) == path
+
+
+def test_truncate_path_exactly_50_chars_returned_verbatim():
+    path = "/home/user/projects/exactly/fifty/chars/padded/xxx"
+    assert len(path) == 50
+    assert _truncate_path(path) == path
+
+
+def test_truncate_path_long_path_starts_with_ellipsis():
+    long = "/very/deeply/nested/directory/structure/that/exceeds/fifty/chars/path"
+    result = _truncate_path(long)
+    assert result.startswith("...")
+
+
+def test_truncate_path_long_path_within_max_len():
+    long = "/very/deeply/nested/directory/structure/that/exceeds/fifty/chars/path"
+    result = _truncate_path(long)
+    assert len(result) <= 50
+
+
+def test_truncate_path_long_path_snaps_to_directory_boundary():
+    long = "/very/deeply/nested/directory/structure/that/exceeds/fifty/chars/path"
+    result = _truncate_path(long)
+    # After "..." the remainder should start with "/"
+    assert result[3] == "/"
+
+
+def test_truncate_path_custom_max_len():
+    path = "/home/user/projects/myapp"
+    result = _truncate_path(path, max_len=15)
+    assert result.startswith("...")
+    assert len(result) <= 15
