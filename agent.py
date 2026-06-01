@@ -5,6 +5,8 @@ from tools import TOOL_DEFINITIONS, TOOL_DISPATCH
 
 import os
 
+from mcp_client import MCPRegistry
+
 
 class _ToolFunction:
     """Minimal stand-in for ollama's tool-call function object."""
@@ -52,6 +54,7 @@ class ReactAgent:
     def __init__(self, model: str = "minimax-m2.5:cloud"):
         self.model = model
         self.history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        self.mcp_registry: MCPRegistry | None = None
 
     def run(self, user_input: str, on_event: Callable[[str, str], None]) -> str:
         """
@@ -68,12 +71,14 @@ class ReactAgent:
         max_iterations = 10
         final_response = ""
 
+        extra_tools = self.mcp_registry.get_tool_definitions() if self.mcp_registry else []
+
         for _ in range(max_iterations):
             on_event("thinking", "Thinking...")
             response = ollama.chat(
                 model=self.model,
                 messages=self.history,
-                tools=TOOL_DEFINITIONS,
+                tools=TOOL_DEFINITIONS + extra_tools,
             )
 
             message = response.message
@@ -102,6 +107,8 @@ class ReactAgent:
                         result = dispatch(args)
                     except Exception as e:
                         result = f"Tool error: {e}"
+                elif name.startswith("mcp__") and self.mcp_registry:
+                    result = self.mcp_registry.call_tool(name, args)
                 else:
                     result = f"Unknown tool: {name}"
 

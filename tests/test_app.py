@@ -150,6 +150,37 @@ def test_model_command_does_not_set_busy():
     assert app._busy is False
 
 
+# ── /mcp command ──────────────────────────────────────────────────────────────
+
+def test_mcp_command_calls_show_mcp_tools():
+    app = _bare_app()
+    app._show_mcp_tools = MagicMock()
+    app.query_one = MagicMock()
+
+    event = MagicMock()
+    event.text = "/mcp"
+    app.on_submittable_text_area_submitted(event)
+
+    app._show_mcp_tools.assert_called_once()
+
+
+def test_mcp_command_does_not_set_busy():
+    app = _bare_app()
+    app._show_mcp_tools = MagicMock()
+    app.query_one = MagicMock()
+
+    event = MagicMock()
+    event.text = "/mcp"
+    app.on_submittable_text_area_submitted(event)
+
+    assert app._busy is False
+
+
+def test_mcp_in_slash_commands():
+    from app import SLASH_COMMANDS
+    assert "/mcp" in SLASH_COMMANDS
+
+
 # ── _truncate_path ────────────────────────────────────────────────────────────
 
 def test_truncate_path_short_path_returned_verbatim():

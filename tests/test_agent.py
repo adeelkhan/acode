@@ -260,3 +260,92 @@ def test_reset_allows_fresh_conversation():
     # fresh turn: only system + user + assistant, no leftover from turn one
     roles = [m["role"] for m in agent.history]
     assert roles == ["system", "user", "assistant"]
+
+
+# ── MCP registry integration ──────────────────────────────────────────────────
+
+def _mock_registry(tool_defs: list[dict] | None = None, call_result: str = "mcp result"):
+    from unittest.mock import MagicMock
+    registry = MagicMock()
+    registry.get_tool_definitions.return_value = tool_defs or []
+    registry.call_tool.return_value = call_result
+    return registry
+
+
+def test_agent_mcp_registry_defaults_to_none():
+    agent = ReactAgent(model="test")
+    assert agent.mcp_registry is None
+
+
+def test_agent_with_registry_includes_mcp_tools_in_llm_call():
+    mcp_def = {"type": "function", "function": {"name": "mcp__srv__tool", "description": "d", "parameters": {}}}
+    registry = _mock_registry(tool_defs=[mcp_def])
+
+    agent = ReactAgent(model="test")
+    agent.mcp_registry = registry
+
+    captured_tools = []
+    def fake_chat(model, messages, tools):
+        captured_tools.extend(tools)
+        return _chat_response("done")
+
+    with patch("agent.ollama.chat", side_effect=fake_chat):
+        agent.run("hello", on_event=lambda _k, _t: None)
+
+    assert any(t["function"]["name"] == "mcp__srv__tool" for t in captured_tools)
+
+
+def test_agent_without_registry_does_not_include_mcp_tools():
+    agent = ReactAgent(model="test")  # mcp_registry is None
+
+    captured_tools = []
+    def fake_chat(model, messages, tools):
+        captured_tools.extend(tools)
+        return _chat_response("done")
+
+    with patch("agent.ollama.chat", side_effect=fake_chat):
+        agent.run("hello", on_event=lambda _k, _t: None)
+
+    assert not any(t["function"]["name"].startswith("mcp__") for t in captured_tools)
+
+
+def test_agent_dispatches_mcp_tool_to_registry():
+    registry = _mock_registry(call_result="weather data")
+    agent = ReactAgent(model="test")
+    agent.mcp_registry = registry
+
+    tc = _tool_call("mcp__weather__get_forecast", {"latitude": 37.7, "longitude": -122.4})
+    responses = [_chat_response("", tool_calls=[tc]), _chat_response("Here is the forecast.")]
+
+    with patch("agent.ollama.chat", side_effect=responses):
+        _collect_events(agent, "what's the weather?")
+
+    registry.call_tool.assert_called_once_with("mcp__weather__get_forecast", {"latitude": 37.7, "longitude": -122.4})
+
+
+def test_agent_mcp_tool_result_appears_in_events():
+    registry = _mock_registry(call_result="sunny, 22°C")
+    agent = ReactAgent(model="test")
+    agent.mcp_registry = registry
+
+    tc = _tool_call("mcp__weather__get_forecast", {})
+    responses = [_chat_response("", tool_calls=[tc]), _chat_response("Done.")]
+
+    with patch("agent.ollama.chat", side_effect=responses):
+        events = _collect_events(agent, "weather?")
+
+    tool_results = [t for k, t in events if k == "tool_result"]
+    assert any("sunny" in t for t in tool_results)
+
+
+def test_agent_unknown_mcp_tool_without_registry_emits_unknown_tool():
+    agent = ReactAgent(model="test")  # no registry
+
+    tc = _tool_call("mcp__ghost__tool", {})
+    responses = [_chat_response("", tool_calls=[tc]), _chat_response("Done.")]
+
+    with patch("agent.ollama.chat", side_effect=responses):
+        events = _collect_events(agent, "do something")
+
+    tool_results = [t for k, t in events if k == "tool_result"]
+    assert any("Unknown tool" in t for t in tool_results)

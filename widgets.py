@@ -3,8 +3,8 @@ from textual.app import ComposeResult
 from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widget import Widget
-from textual.widgets import Static, Markdown, Button, ListView, ListItem, TextArea
-from textual.containers import Container, Horizontal
+from textual.widgets import Static, Markdown, Button, ListView, ListItem, TextArea, Switch
+from textual.containers import Container, Horizontal, VerticalScroll
 
 from helpers import copy_to_clipboard, get_model_info
 
@@ -225,3 +225,45 @@ class MicButton(Button):
 
     def on_click(self) -> None:
         self._toggle()
+
+
+class MCPToolsModal(ModalScreen):
+    """Modal that lists MCP tools and lets the user toggle each one on/off."""
+
+    BINDINGS = [("escape", "dismiss", "Close")]
+
+    def __init__(self, registry: "MCPRegistry") -> None:  # type: ignore[name-defined]
+        super().__init__()
+        self._registry = registry
+
+    def compose(self) -> ComposeResult:
+        tools = self._registry.list_tools()
+        with Container(id="mcp-dialog"):
+            if not tools:
+                yield Static(
+                    "No MCP tools loaded.\n\nEdit [bold]mcp.json[/bold] to add servers.",
+                    id="mcp-empty",
+                    markup=True,
+                )
+            else:
+                yield Static("Toggle tools on / off:", id="mcp-header")
+                with VerticalScroll(id="mcp-tool-list"):
+                    for tool in tools:
+                        with Horizontal(classes="mcp-tool-row"):
+                            yield Switch(
+                                value=tool.enabled,
+                                id=tool.dispatch_name,
+                                classes="mcp-switch",
+                            )
+                            yield Static(
+                                f"[bold]{tool.server_name}[/bold] / {tool.name}\n"
+                                f"[dim]{tool.description or '(no description)'}[/dim]",
+                                classes="mcp-tool-info",
+                                markup=True,
+                            )
+
+    def on_mount(self) -> None:
+        self.query_one("#mcp-dialog").border_title = "MCP Tools"
+
+    def on_switch_changed(self, event: Switch.Changed) -> None:
+        self._registry.set_tool_enabled(event.switch.id, event.value)

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "weather": {
+      "command": "python",
+      "args": ["/Users/adeelkhan/learnStuff/ai/mcp/non_fast_mcp/weather/weather.py"]
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    }
+  }
+}

@@ -13,10 +13,12 @@ from textual import work
 import audio
 from agent import ReactAgent
 from helpers import check_ollama, list_models
-from widgets import AgentCard, CommandHints, MicButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, SubmittableTextArea, ThinkingIndicator
+from mcp_client import MCPRegistry
+from widgets import AgentCard, CommandHints, MCPToolsModal, MicButton, ModelInfoBar, ModelSelectModal, OllamaErrorModal, SubmittableTextArea, ThinkingIndicator
 
 SLASH_COMMANDS: dict[str, str] = {
     "/model": "Switch the active model",
+    "/mcp": "View and toggle MCP tools",
 }
 
 WHISPER_SERVER_BIN = os.environ.get(
@@ -71,6 +73,8 @@ class AcodeApp(App):
         self._recorder = audio.AudioRecorder()
         atexit.register(self._recorder.close)
         self._whisper_proc: subprocess.Popen | None = None
+        self._mcp_registry = MCPRegistry()
+        self.agent.mcp_registry = self._mcp_registry
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="header"):
@@ -86,6 +90,7 @@ class AcodeApp(App):
 
     def on_mount(self) -> None:
         self._start_whisper_server()
+        self._load_mcp()
         self.query_one("#user-input", SubmittableTextArea).border_subtitle = _format_cwd()
         ok, title, error = check_ollama(self.agent.model)
         if not ok:
@@ -97,6 +102,14 @@ class AcodeApp(App):
             css_class="welcome-card",
         )
         self.query_one("#user-input", SubmittableTextArea).focus()
+
+    @work(thread=True)
+    def _load_mcp(self) -> None:
+        self._mcp_registry.load()
+        errors = self._mcp_registry.errors
+        if errors:
+            for err in errors:
+                self.call_from_thread(self.notify, f"MCP: {err}", severity="warning", timeout=6)
 
     def _disable_mic(self, reason: str) -> None:
         btn = self.query_one("#mic-btn")
@@ -197,6 +210,9 @@ class AcodeApp(App):
         if user_text == "/model":
             self._show_model_selector()
             return
+        if user_text == "/mcp":
+            self._show_mcp_tools()
+            return
         self._busy = True  # set on main thread before spawning worker — prevents race condition
         self._process_input(user_text)
 
@@ -214,6 +230,9 @@ class AcodeApp(App):
             self.notify(f"Switched to {model}", timeout=3)
 
         self.push_screen(ModelSelectModal(models), on_selected)
+
+    def _show_mcp_tools(self) -> None:
+        self.push_screen(MCPToolsModal(self._mcp_registry))
 
     @work(thread=True)
     def _process_input(self, user_text: str) -> None:
