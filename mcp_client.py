@@ -23,6 +23,7 @@ Config file (mcp.json):
 """
 
 import asyncio
+import base64
 import json
 import re
 import threading
@@ -65,6 +66,15 @@ def _build_transport(server_name: str, server_cfg: dict) -> tuple[_RawTransport 
         return [cmd] + [str(a) for a in args], None
 
     return None, f"{server_name}: config must have 'url' (HTTP) or 'command' (stdio)"
+
+
+def _save_image_content(item: Any, args: dict) -> str:
+    """Decode an ImageContent item and save it to the cwd. Returns a human-readable path string."""
+    ext = "png" if "png" in getattr(item, "mimeType", "") else "bin"
+    stem = str(args.get("name", "screenshot")).replace(" ", "_")
+    dest = Path.cwd() / f"{stem}.{ext}"
+    dest.write_bytes(base64.b64decode(item.data))
+    return f"Image saved to {dest}"
 
 
 def _to_fastmcp_transport(raw: _RawTransport):
@@ -242,7 +252,14 @@ class MCPRegistry:
                     raise
         content = result.content if hasattr(result, "content") else result
         if isinstance(content, list):
-            parts = [item.text if hasattr(item, "text") else str(item) for item in content]
+            parts = []
+            for item in content:
+                if hasattr(item, "text"):
+                    parts.append(item.text)
+                elif hasattr(item, "data") and hasattr(item, "mimeType"):
+                    parts.append(_save_image_content(item, args))
+                else:
+                    parts.append(str(item))
             return "\n".join(parts)
         return str(result)
 
